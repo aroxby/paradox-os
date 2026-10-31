@@ -5,17 +5,21 @@ EFI_INC = /usr/include/efi
 EFI_ARCH_INC = $(EFI_INC)/$(ARCH)
 INCLUDE = $(EFI_INC) $(EFI_ARCH_INC)
 
-LDLIBS = -lefi
-LDDIRS = /usr/lib
-LDEFISYS=10
-LDFLAGS += $(foreach d, $(LDDIRS), -L$d) $(LDLIBS)
-LDFLAGS += -nostdlib -Wl,-Bsymbolic -Wl,--subsystem=$(LDEFISYS)
+EFI_LIBDIR ?= /usr/lib
+EFI_CRT = $(EFI_LIBDIR)/crt0-efi-$(ARCH).o
+EFI_LDSCRIPT = $(EFI_LIBDIR)/elf_$(ARCH)_efi.lds
+EFI_LDFLAGS = -nostdlib -znocombreloc -T $(EFI_LDSCRIPT) -shared -Bsymbolic --no-undefined
+EFI_LIBS = -lgnuefi -lefi
+OBJCOPY ?= objcopy
+OBJCOPY_SECTIONS = .text .sdata .data .rodata .dynamic .dynsym .rel .rela .reloc
+OBJCOPYFLAGS = $(foreach s, $(OBJCOPY_SECTIONS), -j $(s)) -O efi-app-$(ARCH)
 
 SRCS = $(wildcard *.c)
 OBJS = $(SRCS:.c=.o)
 TARGET = paradox.efi
+EFI_ELF = $(TARGET:.efi=.so)
 
-QEMU_EFI = -drive if=pflash,format=raw,readonly=on,file="c:/Program Files/qemu/share/edk2-x86_64-code.fd"
+# TODO: create target for EFI_FS
 EFI_FS = efi_root
 
 .PHONY: all
@@ -24,16 +28,21 @@ all: $(TARGET)
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(TARGET): $(OBJS)
-	$(CC) $^ $(LDFLAGS) -o $@
+$(EFI_ELF): $(OBJS)
+	$(LD) $(EFI_LDFLAGS) -L$(EFI_LIBDIR) $(EFI_CRT) $(OBJS) $(EFI_LIBS) -o $@
+
+$(TARGET): $(EFI_ELF)
+	$(OBJCOPY) $(OBJCOPYFLAGS) $< $@
 
 .PHONY: clean
 clean:
-	rm -rf $(OBJS) $(TARGET) $(EFI_FS)
+	rm -rf $(OBJS) $(EFI_ELF) $(TARGET) $(EFI_FS)
 
 test: $(TARGET)
 	mkdir -p $(EFI_FS)/EFI/BOOT
 	cp $(^) $(EFI_FS)/EFI/BOOT/BOOTX64.EFI
 
 	qemu-system-x86_64 -drive file=fat:rw:$(EFI_FS),format=raw \
-    	$(QEMU_EFI)
+		-machine graphics=off \
+		-nographic \
+		-bios OVMF.fd
