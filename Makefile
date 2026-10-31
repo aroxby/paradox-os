@@ -45,4 +45,6 @@ test: $(TARGET)
 	qemu-system-x86_64 -drive file=fat:rw:$(EFI_FS),format=raw \
 		-machine graphics=off \
 		-nographic \
-		-bios OVMF.fd
+		-bios OVMF.fd \
+		-device isa-debug-exit,iobase=0xf4,iosize=0x04 \
+		|| true
