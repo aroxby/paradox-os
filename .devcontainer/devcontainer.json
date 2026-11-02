@@ -1,0 +1,7 @@
+{
+  "name": "paradox-os",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "paradox-os",
+  "workspaceFolder": "/workspaces/paradox-os",
+  "shutdownAction": "stopCompose"
+}

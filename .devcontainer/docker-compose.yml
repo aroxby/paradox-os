@@ -1,0 +1,9 @@
+services:
+  paradox-os:
+    image: paradox-os
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: sleep infinity
+    volumes:
+      - ..:/workspaces/paradox-os
