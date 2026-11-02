@@ -19,8 +19,9 @@ OBJS = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SRCS)))
 TARGET = paradox.efi
 EFI_ELF = $(TARGET:.efi=.so)
 
-# TODO: create target for EFI_FS
 EFI_FS = efi_root
+EFI_FS_BOOT = $(EFI_FS)/EFI/BOOT
+EFI_FS_EXE = $(EFI_FS_BOOT)/BOOTX64.EFI
 
 .PHONY: all
 all: $(TARGET)
@@ -37,17 +38,20 @@ $(EFI_ELF): $(OBJS)
 $(TARGET): $(EFI_ELF)
 	$(OBJCOPY) $(OBJCOPYFLAGS) $< $@
 
-.PHONY: clean
-clean:
-	rm -rf $(OBJS) $(EFI_ELF) $(TARGET) $(EFI_FS)
+$(EFI_FS_BOOT):
+	mkdir -p $(@)
 
-test: $(TARGET)
-	mkdir -p $(EFI_FS)/EFI/BOOT
-	cp $(^) $(EFI_FS)/EFI/BOOT/BOOTX64.EFI
+$(EFI_FS_EXE): $(TARGET) | $(EFI_FS_BOOT)
+	cp $(<) $(@)
 
+test: $(EFI_FS_EXE)
 	qemu-system-x86_64 -drive file=fat:rw:$(EFI_FS),format=raw \
 		-machine graphics=off \
 		-nographic \
 		-bios OVMF.fd \
 		-device isa-debug-exit,iobase=0xf4,iosize=0x04 \
 		|| true
+
+.PHONY: clean
+clean:
+	rm -rf $(OBJS) $(EFI_ELF) $(TARGET) $(EFI_FS)
