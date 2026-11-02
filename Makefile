@@ -16,8 +16,10 @@ OBJCOPYFLAGS = $(foreach s, $(OBJCOPY_SECTIONS), -j $(s)) -O efi-app-$(ARCH)
 
 SRC_DIRS = src/loader
 SRCS = $(foreach dir, $(SRC_DIRS), $(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp))
+BUILD_DIR = build
 OBJS = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SRCS)))
-TARGET = paradox.efi
+OBJS := $(addprefix $(BUILD_DIR)/,$(OBJS))
+TARGET = $(BUILD_DIR)/paradox.efi
 EFI_ELF = $(TARGET:.efi=.so)
 
 EFI_FS = efi_root
@@ -27,10 +29,12 @@ EFI_FS_EXE = $(EFI_FS_BOOT)/BOOTX64.EFI
 .PHONY: all
 all: $(TARGET)
 
-%.o: %.c
+$(BUILD_DIR)/%.o: %.c
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-%.o: %.cpp
+$(BUILD_DIR)/%.o: %.cpp
+	@mkdir -p $(dir $@)
 	$(CXX) $(CFLAGS) -c $< -o $@
 
 $(EFI_ELF): $(OBJS)
@@ -55,4 +59,4 @@ test: $(EFI_FS_EXE)
 
 .PHONY: clean
 clean:
-	rm -rf $(OBJS) $(EFI_ELF) $(TARGET) $(EFI_FS)
+	rm -rf $(BUILD_DIR) $(EFI_FS)
