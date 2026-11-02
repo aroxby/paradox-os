@@ -8,8 +8,10 @@
                 "/usr/include/efi/x86_64"
             ],
             "defines": [],
-            "compilerPath": "/usr/bin/g++",
-            "intelliSenseMode": "linux-gcc-x64"
+            "compilerPath": "/usr/bin/clang++-21",
+            "intelliSenseMode": "linux-clang-x64",
+            "cStandard": "c17",
+            "cppStandard": "c++26"
         }
     ],
     "version": 4
