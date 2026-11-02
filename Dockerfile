@@ -5,4 +5,5 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y \
     clang-tidy \
     git \
     gnu-efi \
-    qemu-system-x86
+    qemu-system-x86 \
+    vim
