@@ -1,7 +1,7 @@
 #include <efi.h>
 #include <efilib.h>
 
-#define EFI_STR(str) reinterpret_cast<const CHAR16*>(u##str)
+#define EFI_STR(str) (reinterpret_cast<const CHAR16 *>(u##str))
 
 static void qemuQuit(UINT8 Status) {
     // Writes the exit status to port 0xF4
