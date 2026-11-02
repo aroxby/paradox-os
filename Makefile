@@ -55,6 +55,7 @@ test: $(EFI_FS_EXE)
 		-nographic \
 		-bios OVMF.fd \
 		-device isa-debug-exit,iobase=0xf4,iosize=0x04 \
+		--no-reboot \
 		|| true
 
 .PHONY: clean
