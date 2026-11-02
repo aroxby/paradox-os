@@ -14,7 +14,8 @@ OBJCOPY ?= objcopy
 OBJCOPY_SECTIONS = .text .sdata .data .rodata .dynamic .dynsym .rel .rela .reloc
 OBJCOPYFLAGS = $(foreach s, $(OBJCOPY_SECTIONS), -j $(s)) -O efi-app-$(ARCH)
 
-SRCS = $(wildcard *.c) $(wildcard *.cpp)
+SRC_DIRS = src/loader
+SRCS = $(foreach dir, $(SRC_DIRS), $(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp))
 OBJS = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SRCS)))
 TARGET = paradox.efi
 EFI_ELF = $(TARGET:.efi=.so)
