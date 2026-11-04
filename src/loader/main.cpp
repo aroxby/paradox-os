@@ -1,67 +1,52 @@
 #include "efi.hpp"
 #include "qemu.h"
 
+#include <cstring>
 #include <memory>
 
-static uint8_t fatIdOffset(const uint8_t *Sector0) {
-    // Generic FAT signature
-    if (Sector0[0] != 0xEB && Sector0[0] != 0xE9) {
-        return 0;
-    }
-    if (*(uint16_t *)(Sector0 + 0x1FE) != 0xAA55) {
-        return 0;
-    }
-
-    // FAT12 ("FAT12   ")
-    if (*(uint64_t *)(Sector0 + 0x36) == 0x2020203231544146) {
-        return 0x27;
+/**
+ * Retrieves the GPT Partition UUID (Signature) from a given partition handle.
+ *
+ * @param PartitionHandle  The handle to the partition.
+ * @param OutGuid          Pointer to an EFI_GUID buffer where the UUID will be copied.
+ * @return EFI_SUCCESS if successful, or an appropriate error code.
+ */
+EFI_STATUS GetPartitionUuid(IN EFI_HANDLE PartitionHandle, OUT EFI_GUID *OutGuid) {
+    if (PartitionHandle == NULL || OutGuid == NULL) {
+        return EFI_INVALID_PARAMETER;
     }
 
-    // FAT16 ("FAT16   ")
-    if (*(uint64_t *)(Sector0 + 0x36) == 0x2020203631544146) {
-        return 0x27;
+    // 1. Fetch the Device Path protocol instance from the handle
+    EFI_DEVICE_PATH *DevicePath = DevicePathFromHandle(PartitionHandle);
+    if (DevicePath == NULL) {
+        return EFI_NOT_FOUND;
     }
 
-    // FAT32 ("FAT32   ")
-    if (*(uint64_t *)(Sector0 + 0x52) == 0x2020203233544146) {
-        return 0x43;
+    // 2. Walk the device path nodes looking for the Hard Drive Media Node
+    EFI_DEVICE_PATH *Node = DevicePath;
+    while (!IsDevicePathEnd(Node)) {
+
+        // Type 4 = Media Device Path, SubType 1 = Hard Drive
+        if (DevicePathType(Node) == MEDIA_DEVICE_PATH && DevicePathSubType(Node) == MEDIA_HARDDRIVE_DP) {
+
+            HARDDRIVE_DEVICE_PATH *HdNode = (HARDDRIVE_DEVICE_PATH *)Node;
+
+            // PartitionFormat 2 = GPT (1 = MBR)
+            // SignatureType 2 = GUID (1 = MBR 4-byte signature)
+            if (HdNode->MBRType == SIGNATURE_TYPE_GUID || HdNode->SignatureType == SIGNATURE_TYPE_GUID) {
+                // Copy the 16-byte unique partition GUID out
+                memcpy(OutGuid, HdNode->Signature, sizeof(EFI_GUID));
+                return EFI_SUCCESS;
+            }
+
+            // Found a hard drive node, but it's not a GPT partition
+            return EFI_UNSUPPORTED;
+        }
+
+        Node = NextDevicePathNode(Node);
     }
 
-    return 0;
-}
-
-static EFI_STATUS getVolumeId(EFI_HANDLE ImageHandle, EFI_HANDLE FsHandle, UINT32 *VolumeId) {
-    EFI_STATUS Status;
-    EFI_BLOCK_IO *BlockIo = NULL;
-
-    // 1. Open the Block IO Protocol on the same handle as the File System
-    Status = uefi_call_wrapper((void *)gBS->OpenProtocol, 6, FsHandle, &BlockIoProtocol, (VOID **)&BlockIo, ImageHandle,
-                               NULL, EFI_OPEN_PROTOCOL_GET_PROTOCOL);
-
-    if (EFI_ERROR(Status)) {
-        return Status;
-    }
-
-    // 2. Allocate a buffer matching the media's block size
-    UINT32 BlockSize = BlockIo->Media->BlockSize;
-    std::unique_ptr<UINT8[]> SectorBuffer(new UINT8[BlockSize]);
-    if (!SectorBuffer) {
-        return EFI_OUT_OF_RESOURCES;
-    }
-
-    // 3. Read LBA 0
-    Status = uefi_call_wrapper((void *)BlockIo->ReadBlocks, 5, BlockIo, BlockIo->Media->MediaId, 0, BlockSize,
-                               SectorBuffer.get());
-
-    // 4. Extract FAT Volume Serial Number
-    UINT8 IdOffset = fatIdOffset(SectorBuffer.get());
-    if (IdOffset) {
-        UINT32 serial = *(UINT32 *)(SectorBuffer.get() + IdOffset);
-        *VolumeId = serial;
-        return EFI_SUCCESS;
-    }
-
-    return EFI_UNSUPPORTED;
+    return EFI_NOT_FOUND;
 }
 
 extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
@@ -83,16 +68,13 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
 
     Print(EFI_STR("Found %d file system(s).\n"), HandleCount);
 
-    for (auto i = 0; i < HandleCount; i++) {
-        UINT32 VolumeId = 0;
-        EFI_STATUS Status = getVolumeId(ImageHandle, HandleBuffer[i], &VolumeId);
-
-        if (!EFI_ERROR(Status)) {
-            Print(EFI_STR("Volume Serial Number: %04X-%04X\n"), (VolumeId >> 16) & 0xFFFF, VolumeId & 0xFFFF);
-        } else if (Status == EFI_UNSUPPORTED) {
-            Print(EFI_STR("Supported file system block, but it is not formatted as FAT.\n"));
+    for (UINTN i = 0; i < HandleCount; i++) {
+        EFI_GUID PartGuid;
+        Status = GetPartitionUuid(HandleBuffer[i], &PartGuid);
+        if (EFI_ERROR(Status)) {
+            Print(EFI_STR("Failed to get partition UUID for handle %d (%d).\n"), i, Status);
         } else {
-            Print(EFI_STR("Failed to read raw blocks (Status Code: %r)\n"), Status);
+            Print(EFI_STR("Found partition UUID: %g\n"), &PartGuid);
         }
     }
 
