@@ -1,6 +1,7 @@
 ARCH ?= x86_64
 CFLAGS += $(foreach d, $(INCLUDE), -I$d)
 CFLAGS += -fno-stack-protector -mno-red-zone -fshort-wchar -fpic -ffreestanding -Os
+CXXFLAGS += $(CFLAGS) -fno-exceptions -fno-unwind-tables
 EFI_INC = /usr/include/efi
 EFI_ARCH_INC = $(EFI_INC)/$(ARCH)
 INCLUDE = $(EFI_INC) $(EFI_ARCH_INC)
@@ -35,7 +36,7 @@ $(BUILD_DIR)/%.o: %.c
 
 $(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) $(CFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(EFI_ELF): $(OBJS)
 	$(LD) $(EFI_LDFLAGS) -L$(EFI_LIBDIR) $(EFI_CRT) $(OBJS) $(EFI_LIBS) -o $@
