@@ -27,6 +27,8 @@ EFI_FS = efi_root
 EFI_FS_BOOT = $(EFI_FS)/EFI/BOOT
 EFI_FS_EXE = $(EFI_FS_BOOT)/BOOTX64.EFI
 
+OS_IMG = os.img
+
 .PHONY: all
 all: $(TARGET)
 
@@ -50,8 +52,18 @@ $(EFI_FS_BOOT):
 $(EFI_FS_EXE): $(TARGET) | $(EFI_FS_BOOT)
 	cp $(<) $(@)
 
-test: $(EFI_FS_EXE)
+$(OS_IMG):
+	cp --update=none /bin/true /usr/bin/udevadm  # Container fix
+	dd if=/dev/zero of=$(@).tmp bs=1M count=100
+	parted $(@).tmp --script mklabel gpt
+	parted $(@).tmp --script mkpart "Paradox" fat32 2048s 100%
+	mformat -Fi $(@).tmp@@2048s
+	mv $(@).tmp $(@)
+
+.PHONY: test
+test: $(EFI_FS_EXE) $(OS_IMG)
 	qemu-system-x86_64 -drive file=fat:rw:$(EFI_FS),format=raw \
+		-drive file=$(OS_IMG),format=raw,media=disk \
 		-machine graphics=off \
 		-nographic \
 		-bios OVMF.fd \
@@ -61,4 +73,4 @@ test: $(EFI_FS_EXE)
 
 .PHONY: clean
 clean:
-	rm -rf $(BUILD_DIR) $(EFI_FS)
+	rm -rf $(BUILD_DIR) $(EFI_FS) $(OS_IMG) $(OS_IMG).tmp
