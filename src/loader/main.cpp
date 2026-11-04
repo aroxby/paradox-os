@@ -3,7 +3,7 @@
 
 #include <memory>
 
-static uint8_t fatVolOffset(const uint8_t *Sector0) {
+static uint8_t fatIdOffset(const uint8_t *Sector0) {
     // Generic FAT signature
     if (Sector0[0] != 0xEB && Sector0[0] != 0xE9) {
         return 0;
@@ -30,7 +30,7 @@ static uint8_t fatVolOffset(const uint8_t *Sector0) {
     return 0;
 }
 
-static EFI_STATUS getFat32VolumeId(EFI_HANDLE ImageHandle, EFI_HANDLE FsHandle, UINT32 *VolumeId) {
+static EFI_STATUS getVolumeId(EFI_HANDLE ImageHandle, EFI_HANDLE FsHandle, UINT32 *VolumeId) {
     EFI_STATUS Status;
     EFI_BLOCK_IO *BlockIo = NULL;
 
@@ -53,17 +53,15 @@ static EFI_STATUS getFat32VolumeId(EFI_HANDLE ImageHandle, EFI_HANDLE FsHandle, 
     Status = uefi_call_wrapper((void *)BlockIo->ReadBlocks, 5, BlockIo, BlockIo->Media->MediaId, 0, BlockSize,
                                SectorBuffer.get());
 
-    // 4. Extract the 4-byte Volume Serial Number
-    uint8_t volOffset = fatVolOffset(SectorBuffer.get());
-    if (volOffset) {
-        *VolumeId = *(UINT32 *)(SectorBuffer.get() + volOffset);
-        Status = EFI_SUCCESS;
-    } else {
-        Print(EFI_STR("Unsupported or non-FAT file system.\n"));
-        Status = EFI_UNSUPPORTED;
+    // 4. Extract FAT Volume Serial Number
+    UINT8 IdOffset = fatIdOffset(SectorBuffer.get());
+    if (IdOffset) {
+        UINT32 serial = *(UINT32 *)(SectorBuffer.get() + IdOffset);
+        *VolumeId = serial;
+        return EFI_SUCCESS;
     }
 
-    return Status;
+    return EFI_UNSUPPORTED;
 }
 
 extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
@@ -87,10 +85,10 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
 
     for (auto i = 0; i < HandleCount; i++) {
         UINT32 VolumeId = 0;
-        EFI_STATUS Status = getFat32VolumeId(ImageHandle, HandleBuffer[i], &VolumeId);
+        EFI_STATUS Status = getVolumeId(ImageHandle, HandleBuffer[i], &VolumeId);
 
         if (!EFI_ERROR(Status)) {
-            Print(EFI_STR("FAT Volume Serial Number: %04X-%04X\n"), (VolumeId >> 16) & 0xFFFF, VolumeId & 0xFFFF);
+            Print(EFI_STR("Volume Serial Number: %04X-%04X\n"), (VolumeId >> 16) & 0xFFFF, VolumeId & 0xFFFF);
         } else if (Status == EFI_UNSUPPORTED) {
             Print(EFI_STR("Supported file system block, but it is not formatted as FAT.\n"));
         } else {
