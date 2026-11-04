@@ -69,13 +69,12 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
     Print(EFI_STR("Found %d file system(s).\n"), HandleCount);
 
     for (UINTN i = 0; i < HandleCount; i++) {
-        EFI_GUID PartGuid;
-        Status = getPartitionUuid(HandleBuffer[i], &PartGuid);
+        EFI_GUID PartUuid;
+        Status = getPartitionUuid(HandleBuffer[i], &PartUuid);
         if (EFI_ERROR(Status)) {
-            Print(EFI_STR("Failed to get partition UUID for handle %d (%d).\n"), i, Status);
-        } else {
-            Print(EFI_STR("Found partition UUID: %g\n"), &PartGuid);
+            continue;
         }
+        Print(EFI_STR("Found partition UUID: %g\n"), &PartUuid);
     }
 
     qemuQuit(0);
