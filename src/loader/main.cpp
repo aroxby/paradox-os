@@ -11,7 +11,7 @@
  * @param OutGuid          Pointer to an EFI_GUID buffer where the UUID will be copied.
  * @return EFI_SUCCESS if successful, or an appropriate error code.
  */
-EFI_STATUS GetPartitionUuid(IN EFI_HANDLE PartitionHandle, OUT EFI_GUID *OutGuid) {
+static EFI_STATUS getPartitionUuid(EFI_HANDLE PartitionHandle, EFI_GUID *OutGuid) {
     if (PartitionHandle == NULL || OutGuid == NULL) {
         return EFI_INVALID_PARAMETER;
     }
@@ -70,7 +70,7 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
 
     for (UINTN i = 0; i < HandleCount; i++) {
         EFI_GUID PartGuid;
-        Status = GetPartitionUuid(HandleBuffer[i], &PartGuid);
+        Status = getPartitionUuid(HandleBuffer[i], &PartGuid);
         if (EFI_ERROR(Status)) {
             Print(EFI_STR("Failed to get partition UUID for handle %d (%d).\n"), i, Status);
         } else {
