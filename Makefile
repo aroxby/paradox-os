@@ -53,11 +53,9 @@ $(EFI_FS_EXE): $(TARGET) | $(EFI_FS_BOOT)
 	cp $(<) $(@)
 
 $(OS_IMG):
-	cp --update=none /bin/true /usr/bin/udevadm  # Container fix
 	dd if=/dev/zero of=$(@).tmp bs=1M count=100
-	parted $(@).tmp --script mklabel gpt
-	parted $(@).tmp --script mkpart "Paradox" fat32 2048s 100%
-	mformat -Fi $(@).tmp@@2048s
+	echo "label: gpt\nstart=8M,type=\"Microsoft basic data\"" | sfdisk $(@).tmp
+	mformat -Fi $(@).tmp@@8M
 	mv $(@).tmp $(@)
 
 .PHONY: test
