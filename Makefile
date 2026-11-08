@@ -1,7 +1,8 @@
 ARCH ?= x86_64
-CFLAGS += $(foreach d, $(INCLUDE), -I$d)
-CFLAGS += -fno-stack-protector -mno-red-zone -fshort-wchar -fpic -ffreestanding -Os
-CXXFLAGS += $(CFLAGS) -fno-exceptions -fno-unwind-tables
+BASE_CFLAGS += $(foreach d, $(INCLUDE), -I$d)
+BASE_CFLAGS += -fno-stack-protector -mno-red-zone -fshort-wchar -fpic -ffreestanding -Os
+CFLAGS += $(BASE_CFLAGS) -std=c17
+CXXFLAGS += $(BASE_CFLAGS) -std=c++26 -fno-exceptions -fno-unwind-tables
 EFI_INC = /usr/include/efi
 EFI_ARCH_INC = $(EFI_INC)/$(ARCH)
 INCLUDE = $(EFI_INC) $(EFI_ARCH_INC)
