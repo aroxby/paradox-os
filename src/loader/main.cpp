@@ -47,7 +47,7 @@ static Result<String> findCfg(EFI_HANDLE ImageHandle) {
         return std::unexpected(EFI_NOT_FOUND);
     }
 
-    String CfgPath(DevicePathToStr(LoadedImage->FilePath));
+    String CfgPath(FilePathStr);
     size_t LastSlashPos = CfgPath.find_last_of(L'\\');
     if (LastSlashPos == String::npos) {
         return std::unexpected(EFI_DEVICE_ERROR);
