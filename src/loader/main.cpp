@@ -2,6 +2,7 @@
 #include <memory>
 
 #include "efi.hpp"
+#include "fixedarray.h"
 #include "qemu.h"
 #include "string.h"
 
@@ -30,6 +31,19 @@ static Result<EFI_GUID> getPartitionUuid(EFI_HANDLE PartitionHandle) {
     }
 
     return std::unexpected(EFI_NOT_FOUND);
+}
+
+static Result<FixedArray<EFI_HANDLE>> getFileSystemHandles() {
+    EFI_STATUS Status;
+    UINTN HandleCount = 0;
+    EFI_HANDLE *HandleBuffer = NULL;
+    Status = uefi_call_wrapper((void *)gBS->LocateHandleBuffer, 5, ByProtocol, &FileSystemProtocol, NULL, &HandleCount,
+                               &HandleBuffer);
+    if (EFI_ERROR(Status)) {
+        return std::unexpected(Status);
+    }
+
+    return FixedArray<EFI_HANDLE>(HandleBuffer, HandleCount);
 }
 
 static Result<String> findCfg(EFI_HANDLE ImageHandle) {
@@ -69,23 +83,17 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
     }
     Print(EFI_STR("Found config path: %s\n"), ConfigResult.value().c_str());
 
-    EFI_STATUS Status;
-    UINTN HandleCount = 0;
-    EFI_HANDLE *HandleBuffer = NULL;
-    Status = uefi_call_wrapper((void *)gBS->LocateHandleBuffer, 5, ByProtocol, &FileSystemProtocol, NULL, &HandleCount,
-                               &HandleBuffer);
-    std::unique_ptr<EFI_HANDLE[]> HandleBufferDeleter(HandleBuffer);
-
-    if (EFI_ERROR(Status)) {
-        Print(EFI_STR("Failed to locate File System handles (%d).\n"), Status);
+    auto FileSystemHandlesResult = getFileSystemHandles();
+    if (!FileSystemHandlesResult) {
+        Print(EFI_STR("Failed to get file system handles (%d)\n"), FileSystemHandlesResult.error());
         qemuQuit(1);
-        return Status;
+        return FileSystemHandlesResult.error();
     }
+    auto &FileSystemHandles = FileSystemHandlesResult.value();
+    Print(EFI_STR("Found %d file system(s).\n"), FileSystemHandles.size());
 
-    Print(EFI_STR("Found %d file system(s).\n"), HandleCount);
-
-    for (UINTN i = 0; i < HandleCount; i++) {
-        auto PartUuidResult = getPartitionUuid(HandleBuffer[i]);
+    for (auto &Handle : FileSystemHandles) {
+        auto PartUuidResult = getPartitionUuid(Handle);
         if (!PartUuidResult) {
             continue;
         }
