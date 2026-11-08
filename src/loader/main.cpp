@@ -3,6 +3,7 @@
 
 #include "efi.hpp"
 #include "qemu.h"
+#include "string.h"
 
 template <typename T> using Result = std::expected<T, EFI_STATUS>;
 
@@ -31,9 +32,42 @@ static Result<EFI_GUID> getPartitionUuid(EFI_HANDLE PartitionHandle) {
     return std::unexpected(EFI_NOT_FOUND);
 }
 
+static Result<String> findCfg(EFI_HANDLE ImageHandle) {
+    constexpr const auto *CFG_FILE_NAME = u"paradox.cfg";
+    EFI_STATUS Status;
+    EFI_LOADED_IMAGE *LoadedImage = NULL;
+
+    Status = uefi_call_wrapper((void *)BS->HandleProtocol, 3, ImageHandle, &LoadedImageProtocol, (VOID **)&LoadedImage);
+    if (EFI_ERROR(Status)) {
+        return std::unexpected(EFI_NOT_FOUND);
+    }
+
+    CHAR16 *FilePathStr = DevicePathToStr(LoadedImage->FilePath);
+    if (FilePathStr == NULL) {
+        return std::unexpected(EFI_NOT_FOUND);
+    }
+
+    String CfgPath(DevicePathToStr(LoadedImage->FilePath));
+    size_t LastSlashPos = CfgPath.find_last_of(L'\\');
+    if (LastSlashPos == String::npos) {
+        return std::unexpected(EFI_DEVICE_ERROR);
+    }
+
+    CfgPath.replace(LastSlashPos + 1, CfgPath.length() - (LastSlashPos + 1), (const CHAR16 *)CFG_FILE_NAME);
+    return CfgPath;
+}
+
 extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
     InitializeLib(ImageHandle, SystemTable);
     Print(EFI_STR("Paradox Loader Init!\n"));
+
+    auto ConfigResult = findCfg(ImageHandle);
+    if (!ConfigResult) {
+        Print(EFI_STR("Failed to find config path (%d)\n"), ConfigResult.error());
+        qemuQuit(1);
+        return ConfigResult.error();
+    }
+    Print(EFI_STR("Found config path: %s\n"), ConfigResult.value().c_str());
 
     EFI_STATUS Status;
     UINTN HandleCount = 0;
