@@ -27,6 +27,7 @@ EFI_ELF = $(TARGET:.efi=.so)
 EFI_FS = efi_root
 EFI_FS_BOOT = $(EFI_FS)/EFI/BOOT
 EFI_FS_EXE = $(EFI_FS_BOOT)/BOOTX64.EFI
+EFI_FS_CONFIG = $(EFI_FS_BOOT)/paradox.cfg
 
 OS_IMG = os.img
 
@@ -53,6 +54,9 @@ $(EFI_FS_BOOT):
 $(EFI_FS_EXE): $(TARGET) | $(EFI_FS_BOOT)
 	cp $(<) $(@)
 
+$(EFI_FS_CONFIG): | $(EFI_FS_BOOT)
+	date > $(@)
+
 $(OS_IMG):
 	dd if=/dev/zero of=$(@).tmp bs=1M count=100
 	echo "label: gpt\nstart=8M,type=\"Microsoft basic data\"" | sfdisk $(@).tmp
@@ -60,7 +64,7 @@ $(OS_IMG):
 	mv $(@).tmp $(@)
 
 .PHONY: test
-test: $(EFI_FS_EXE) $(OS_IMG)
+test: $(EFI_FS_EXE) $(EFI_FS_CONFIG) $(OS_IMG)
 	qemu-system-x86_64 -drive file=fat:rw:$(EFI_FS),format=raw \
 		-drive file=$(OS_IMG),format=raw,media=disk \
 		-machine graphics=off \
