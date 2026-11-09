@@ -77,7 +77,7 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
 
     auto ConfigResult = findCfg(ImageHandle);
     if (!ConfigResult) {
-        Print(EFI_STR("Failed to find config path (%d)\n"), ConfigResult.error());
+        Print(EFI_STR("Failed to find config path (%u)\n"), ConfigResult.error());
         qemuQuit(1);
         return ConfigResult.error();
     }
@@ -85,7 +85,7 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
 
     auto FileSystemHandlesResult = getFileSystemHandles();
     if (!FileSystemHandlesResult) {
-        Print(EFI_STR("Failed to get file system handles (%d)\n"), FileSystemHandlesResult.error());
+        Print(EFI_STR("Failed to get file system handles (%u)\n"), FileSystemHandlesResult.error());
         qemuQuit(1);
         return FileSystemHandlesResult.error();
     }
