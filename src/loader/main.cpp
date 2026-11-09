@@ -132,6 +132,12 @@ static Result<String> loadFile(EFI_HANDLE ImageHandle, const String &FilePath) {
     return String(utf8ToUtf16(reinterpret_cast<const char *>(Buffer.get())).get());
 }
 
+[[noreturn]] static void quit(unsigned char Status) {
+    qemuQuit(Status);
+    for (;;) {
+    }
+}
+
 extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
     InitializeLib(ImageHandle, SystemTable);
     Print(EFI_STR("Paradox Loader Init!\n"));
@@ -139,7 +145,7 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
     auto ConfigResult = findCfg(ImageHandle);
     if (!ConfigResult) {
         Print(EFI_STR("Failed to find config path (%u)\n"), ConfigResult.error());
-        qemuQuit(1);
+        quit(1);
         return ConfigResult.error();
     }
     Print(EFI_STR("Found config path: %s\n"), ConfigResult.value().c_str());
@@ -147,7 +153,7 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
     auto FileSystemHandlesResult = getFileSystemHandles();
     if (!FileSystemHandlesResult) {
         Print(EFI_STR("Failed to get file system handles (%u)\n"), FileSystemHandlesResult.error());
-        qemuQuit(1);
+        quit(1);
         return FileSystemHandlesResult.error();
     }
     auto &FileSystemHandles = FileSystemHandlesResult.value();
@@ -166,7 +172,7 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
     auto LoadFileResult = loadFile(ImageHandle, ConfigResult.value());
     if (!LoadFileResult) {
         Print(EFI_STR("Failed to load file (%u)\n"), LoadFileResult.error());
-        qemuQuit(1);
+        quit(1);
         return LoadFileResult.error();
     }
     auto &ConfigContent = LoadFileResult.value();
@@ -174,10 +180,6 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
     Print(EFI_STR("%s\n"), ConfigContent.c_str());
     Print(EFI_STR("=== CONFIG ===\n"));
 
-    qemuQuit(0);
-
-    for (;;) {
-    }
-
+    quit(0);
     return EFI_SUCCESS;
 }
