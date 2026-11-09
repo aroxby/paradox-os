@@ -156,7 +156,7 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
         quit(1);
         return FileSystemHandlesResult.error();
     }
-    auto &FileSystemHandles = FileSystemHandlesResult.value();
+    auto &&FileSystemHandles = FileSystemHandlesResult.value();
     Print(EFI_STR("Found %d file system(s).\n"), FileSystemHandles.size());
 
     for (auto &Handle : FileSystemHandles) {
@@ -175,7 +175,7 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
         quit(1);
         return LoadFileResult.error();
     }
-    auto &ConfigContent = LoadFileResult.value();
+    auto &&ConfigContent = LoadFileResult.value();
     Print(EFI_STR("=== CONFIG ===\n"));
     Print(EFI_STR("%s\n"), ConfigContent.c_str());
     Print(EFI_STR("=== CONFIG ===\n"));
