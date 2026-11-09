@@ -1,12 +1,10 @@
-#include <expected>
 #include <memory>
 
 #include "efi.hpp"
 #include "fixedarray.h"
 #include "qemu.h"
+#include "result.h"
 #include "string.h"
-
-template <typename T> using Result = std::expected<T, EFI_STATUS>;
 
 static Result<EFI_GUID> getPartitionUuid(EFI_HANDLE PartitionHandle) {
     EFI_DEVICE_PATH *DevicePath = DevicePathFromHandle(PartitionHandle);
