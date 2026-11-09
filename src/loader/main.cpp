@@ -180,6 +180,31 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
     Print(EFI_STR("%s\n"), ConfigContent.c_str());
     Print(EFI_STR("=== CONFIG ===\n"));
 
+    auto *ConfigDataStart = ConfigContent.data();
+    auto *ConfigDataEnd = ConfigDataStart + ConfigContent.length();
+    auto *ConfigLineStart = ConfigDataStart;
+    while (ConfigLineStart < ConfigDataEnd) {
+        auto *ConfigLineEnd = ConfigLineStart;
+        while (ConfigLineEnd < ConfigDataEnd && *ConfigLineEnd != L'\n') {
+            ++ConfigLineEnd;
+        }
+        *ConfigLineEnd = L'\0';
+
+        auto *Split = wcschr(ConfigLineStart, (CHAR16)L'=');
+        if (!Split) {
+            Print(EFI_STR("Invalid config line: [%s]\n"), ConfigLineStart);
+            quit(1);
+        }
+        *Split = L'\0';
+
+        Print(EFI_STR("Config line: [%s] = [%s]\n"), wcsstrip(ConfigLineStart), wcsstrip(Split + 1));
+
+        ConfigLineStart = ConfigLineEnd;
+        do {
+            ++ConfigLineStart;
+        } while (ConfigLineStart < ConfigDataEnd && *ConfigLineStart == L'\n');
+    }
+
     quit(0);
     return EFI_SUCCESS;
 }

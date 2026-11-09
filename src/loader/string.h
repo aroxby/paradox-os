@@ -24,6 +24,28 @@ void wcstrcpy(CHAR16 *dest, const CHAR16 *src) {
     dest[i] = 0;
 }
 
+CHAR16 *wcschr(CHAR16 *str, CHAR16 ch) {
+    while (*str != 0) {
+        if (*str == ch) {
+            return str;
+        }
+        str++;
+    }
+    return nullptr;
+}
+
+CHAR16 *wcsstrip(CHAR16 *str) {
+    while (*str == L' ' || *str == L'\t') {
+        str++;
+    }
+    CHAR16 *end = str;
+    while (*end != 0 && *end != L' ' && *end != L'\t') {
+        end++;
+    }
+    *end = 0;
+    return str;
+}
+
 class String {
   public:
     static constexpr size_t npos = static_cast<size_t>(-1);
@@ -36,6 +58,8 @@ class String {
     }
 
     const CHAR16 *c_str() const { return Buffer.get(); }
+
+    CHAR16 *data() { return Buffer.get(); }
 
     size_t length() const { return wcstrlen(Buffer.get()); }
 
