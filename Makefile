@@ -55,7 +55,7 @@ $(EFI_FS_EXE): $(TARGET) | $(EFI_FS_BOOT)
 	cp $(<) $(@)
 
 $(EFI_FS_CONFIG): | $(EFI_FS_BOOT)
-	echo "key=value\nname  = example" > $(@)
+	echo "some key=some value\nname  =  example\nstart=\n=end" > $(@)
 
 $(OS_IMG):
 	dd if=/dev/zero of=$(@).tmp bs=1M count=100

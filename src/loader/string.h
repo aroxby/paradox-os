@@ -38,11 +38,13 @@ CHAR16 *wcsstrip(CHAR16 *str) {
     while (*str == L' ' || *str == L'\t') {
         str++;
     }
-    CHAR16 *end = str;
-    while (*end != 0 && *end != L' ' && *end != L'\t') {
-        end++;
+
+    CHAR16 *end = str + wcstrlen(str);
+    while (end > str && (*end == L' ' || *end == L'\t' || *end == 0)) {
+        *end = 0;
+        end--;
     }
-    *end = 0;
+
     return str;
 }
 
