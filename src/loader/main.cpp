@@ -32,17 +32,17 @@ static Result<EFI_GUID> getPartitionUuid(EFI_HANDLE PartitionHandle) {
     return std::unexpected(EFI_NOT_FOUND);
 }
 
-static Result<FixedArray<EFI_HANDLE>> getFileSystemHandles() {
+static Result<FixedArray<EFI_FILE_HANDLE>> getFileSystemHandles() {
     EFI_STATUS Status;
     UINTN HandleCount = 0;
-    EFI_HANDLE *HandleBuffer = NULL;
+    EFI_FILE_HANDLE *HandleBuffer = NULL;
     Status = uefi_call_wrapper((void *)gBS->LocateHandleBuffer, 5, ByProtocol, &FileSystemProtocol, NULL, &HandleCount,
                                &HandleBuffer);
     if (EFI_ERROR(Status)) {
         return std::unexpected(Status);
     }
 
-    return FixedArray<EFI_HANDLE>(HandleBuffer, HandleCount);
+    return FixedArray<EFI_FILE_HANDLE>(HandleBuffer, HandleCount);
 }
 
 static Result<String> findCfg(EFI_HANDLE ImageHandle) {
