@@ -53,18 +53,18 @@ static Result<String> findCfg(EFI_HANDLE ImageHandle) {
 
     Status = uefi_call_wrapper((void *)BS->HandleProtocol, 3, ImageHandle, &LoadedImageProtocol, (VOID **)&LoadedImage);
     if (EFI_ERROR(Status)) {
-        return std::unexpected(EFI_NOT_FOUND);
+        return std::unexpected(EFI_UNSUPPORTED);
     }
 
     CHAR16 *FilePathStr = DevicePathToStr(LoadedImage->FilePath);
     if (FilePathStr == NULL) {
-        return std::unexpected(EFI_NOT_FOUND);
+        return std::unexpected(EFI_DEVICE_ERROR);
     }
 
     String CfgPath(FilePathStr);
     size_t LastSlashPos = CfgPath.find_last_of(L'\\');
     if (LastSlashPos == String::npos) {
-        return std::unexpected(EFI_DEVICE_ERROR);
+        return std::unexpected(EFI_NOT_FOUND);
     }
 
     CfgPath.replace(LastSlashPos + 1, CfgPath.length() - (LastSlashPos + 1), (const CHAR16 *)CFG_FILE_NAME);
