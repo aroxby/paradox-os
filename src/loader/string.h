@@ -52,22 +52,27 @@ class String {
   public:
     static constexpr size_t npos = static_cast<size_t>(-1);
 
-    String() : Buffer(new CHAR16[1]{0}) {}
+    String() : buffer(new CHAR16[1]{0}) {}
 
     explicit(false) String(const CHAR16 *str) {
-        Buffer.reset(new CHAR16[wcstrlen(str) + 1]);
-        wcstrcpy(Buffer.get(), str);
+        buffer.reset(new CHAR16[wcstrlen(str) + 1]);
+        wcstrcpy(buffer.get(), str);
     }
 
-    const CHAR16 *c_str() const { return Buffer.get(); }
+    String(const String &other) {
+        buffer.reset(new CHAR16[other.length() + 1]);
+        wcstrcpy(buffer.get(), other.buffer.get());
+    }
 
-    CHAR16 *data() { return Buffer.get(); }
+    const CHAR16 *c_str() const { return buffer.get(); }
 
-    size_t length() const { return wcstrlen(Buffer.get()); }
+    CHAR16 *data() { return buffer.get(); }
+
+    size_t length() const { return wcstrlen(buffer.get()); }
 
     size_t find_last_of(CHAR16 ch) const {
         for (size_t i = length(); i > 0; i--) {
-            if (Buffer.get()[i - 1] == ch) {
+            if (buffer.get()[i - 1] == ch) {
                 return i - 1;
             }
         }
@@ -79,20 +84,20 @@ class String {
         std::unique_ptr<CHAR16[]> new_buffer(new CHAR16[new_len + 1]);
         size_t i = 0;
         for (size_t j = 0; j < pos; j++) {
-            new_buffer[i++] = Buffer.get()[j];
+            new_buffer[i++] = buffer.get()[j];
         }
         for (size_t j = 0; j < wcstrlen(str); j++) {
             new_buffer[i++] = str[j];
         }
         for (size_t j = pos + len; j < length(); j++) {
-            new_buffer[i++] = Buffer.get()[j];
+            new_buffer[i++] = buffer.get()[j];
         }
         new_buffer[i] = 0;
-        Buffer = std::move(new_buffer);
+        buffer = std::move(new_buffer);
     }
 
   private:
-    std::unique_ptr<CHAR16[]> Buffer;
+    std::unique_ptr<CHAR16[]> buffer;
 };
 
 #endif // WORKSPACES_PARADOX_OS_SRC_LOADER_STRING_H
