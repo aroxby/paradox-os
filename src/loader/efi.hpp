@@ -6,12 +6,12 @@
 
 #define EFI_STR(Str) (reinterpret_cast<const CHAR16 *>(u##Str))
 
-inline void *operator new(size_t Size) { return AllocatePool(Size); }
+void *operator new(size_t size) { return AllocatePool(size); }
 
-inline void *operator new[](unsigned long Size) { return AllocatePool(Size); }
+void *operator new[](unsigned long size) { return AllocatePool(size); }
 
-inline void operator delete(void *Ptr) { return FreePool(Ptr); }
+void operator delete(void *ptr) { return FreePool(ptr); }
 
-inline void operator delete[](void *Ptr) { return FreePool(Ptr); }
+void operator delete[](void *ptr) { return FreePool(ptr); }
 
 #endif // WORKSPACES_PARADOX_OS_SRC_LOADER_EFI_HPP

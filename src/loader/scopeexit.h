@@ -2,11 +2,11 @@
 #define WORKSPACES_PARADOX_OS_SRC_LOADER_SCOPEEXIT_H
 
 template <typename Function> class ScopeExit {
-    Function SavedFunc;
+    Function func;
 
   public:
-    explicit ScopeExit(Function Func) : SavedFunc(Func) {}
-    ~ScopeExit() { SavedFunc(); }
+    explicit ScopeExit(Function func) : func(func) {}
+    ~ScopeExit() { func(); }
 
     // Prevent copying
     ScopeExit(const ScopeExit &) = delete;
