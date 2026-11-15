@@ -14,30 +14,24 @@ template <typename T> class List {
   public:
     class Iterator {
       public:
-        explicit Iterator(Node *node) : value(&node->value), next(node->next.get()) {}
-        T &operator*() const { return *value; }
-        T *operator->() const { return value; }
+        explicit Iterator(Node *node) : current(node) {}
+        T &operator*() const { return current->value; }
+        T *operator->() const { return &current->value; }
 
         Iterator &operator++() {
-            inc();
+            current = current->next.get();
             return *this;
         }
         Iterator operator++(int) {
             Iterator tmp = *this;
-            inc();
+            current = current->next.get();
             return tmp;
         }
 
-        bool operator!=(const Iterator &other) const { return next != other.next || value != other.value; }
+        bool operator!=(const Iterator &other) const { return current != other.current; }
 
       private:
-        T *value;
-        Node *next;
-
-        void inc() {
-            value = &next->value;
-            next = next->next.get();
-        }
+        Node *current;
     };
 
     void insert(const T &value) {
