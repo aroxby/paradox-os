@@ -2,6 +2,7 @@
 
 #include "efi.hpp"
 #include "fixedarray.h"
+#include "list.h"
 #include "qemu.h"
 #include "result.h"
 #include "scopeexit.h"
@@ -180,6 +181,8 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
     Print(EFI_STR("%s\n"), ConfigContent.c_str());
     Print(EFI_STR("=== CONFIG ===\n"));
 
+    List<String> configValues;
+
     auto *ConfigDataStart = ConfigContent.data();
     auto *ConfigDataEnd = ConfigDataStart + ConfigContent.length();
     auto *ConfigLineStart = ConfigDataStart;
@@ -198,11 +201,17 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
         *Split = L'\0';
 
         Print(EFI_STR("Config line: [%s] = [%s]\n"), wcsstrip(ConfigLineStart), wcsstrip(Split + 1));
+        configValues.insert(std::move(String(wcsstrip(ConfigLineStart))));
+        configValues.insert(std::move(String(wcsstrip(Split + 1))));
 
         ConfigLineStart = ConfigLineEnd;
         do {
             ++ConfigLineStart;
         } while (ConfigLineStart < ConfigDataEnd && *ConfigLineStart == L'\n');
+    }
+
+    for (auto &value : configValues) {
+        Print(EFI_STR("Config value: [%s]\n"), value.c_str());
     }
 
     quit(0);
