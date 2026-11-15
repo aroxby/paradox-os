@@ -42,6 +42,9 @@ template <typename T> class List {
     Iterator begin() { return Iterator(head.get()); }
     Iterator end() { return Iterator(tail.get()); }
 
+    Iterator begin() const { return Iterator(head.get()); }
+    Iterator end() const { return Iterator(tail.get()); }
+
   private:
     // Note: Tail is also owned by the nodes but is null
     std::unique_ptr<Node> head, tail;

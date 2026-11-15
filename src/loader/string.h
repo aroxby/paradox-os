@@ -48,6 +48,14 @@ CHAR16 *wcsstrip(CHAR16 *str) {
     return str;
 }
 
+int wcstrcmp(const CHAR16 *str1, const CHAR16 *str2) {
+    while (*str1 != 0 && *str1 == *str2) {
+        str1++;
+        str2++;
+    }
+    return *str1 - *str2;
+}
+
 class String {
   public:
     static constexpr size_t npos = static_cast<size_t>(-1);
@@ -63,6 +71,8 @@ class String {
         buffer.reset(new CHAR16[other.length() + 1]);
         wcstrcpy(buffer.get(), other.buffer.get());
     }
+
+    bool operator==(const String &other) const { return wcstrcmp(buffer.get(), other.buffer.get()) == 0; }
 
     const CHAR16 *c_str() const { return buffer.get(); }
 

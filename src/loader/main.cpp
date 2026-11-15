@@ -1,5 +1,6 @@
 #include <memory>
 
+#include "config.h"
 #include "efi.hpp"
 #include "fixedarray.h"
 #include "list.h"
@@ -134,6 +135,35 @@ static Result<String> loadFile(EFI_HANDLE ImageHandle, const String &FilePath) {
     return String(utf8ToUtf16(reinterpret_cast<const char *>(Buffer.get())).get());
 }
 
+static Result<Config> parseConfig(String &configContent) {
+    Config config;
+    auto *configDataStart = configContent.data();
+    auto *configDataEnd = configDataStart + configContent.length();
+    auto *configLineStart = configDataStart;
+    while (configLineStart < configDataEnd) {
+        auto *configLineEnd = configLineStart;
+        while (configLineEnd < configDataEnd && *configLineEnd != L'\n') {
+            ++configLineEnd;
+        }
+        *configLineEnd = L'\0';
+
+        auto *split = wcschr(configLineStart, (CHAR16)L'=');
+        if (!split) {
+            Print(EFI_STR("Invalid config line: [%s]\n"), configLineStart);
+            return std::unexpected(EFI_INVALID_PARAMETER);
+        }
+        *split = L'\0';
+
+        config.insert(std::move(Pair<String, String>{wcsstrip(configLineStart), wcsstrip(split + 1)}));
+
+        configLineStart = configLineEnd;
+        do {
+            ++configLineStart;
+        } while (configLineStart < configDataEnd && *configLineStart == L'\n');
+    }
+    return config;
+}
+
 [[noreturn]] static void quit(unsigned char Status) {
     qemuQuit(Status);
     for (;;) {
@@ -179,33 +209,15 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
     }
     auto &&ConfigContent = LoadFileResult.value();
 
-    auto *ConfigDataStart = ConfigContent.data();
-    auto *ConfigDataEnd = ConfigDataStart + ConfigContent.length();
-    auto *ConfigLineStart = ConfigDataStart;
-    List<Pair<String, String>> configValues;
-    while (ConfigLineStart < ConfigDataEnd) {
-        auto *ConfigLineEnd = ConfigLineStart;
-        while (ConfigLineEnd < ConfigDataEnd && *ConfigLineEnd != L'\n') {
-            ++ConfigLineEnd;
-        }
-        *ConfigLineEnd = L'\0';
-
-        auto *Split = wcschr(ConfigLineStart, (CHAR16)L'=');
-        if (!Split) {
-            Print(EFI_STR("Invalid config line: [%s]\n"), ConfigLineStart);
-            quit(1);
-        }
-        *Split = L'\0';
-
-        configValues.insert(std::move(Pair<String, String>{wcsstrip(ConfigLineStart), wcsstrip(Split + 1)}));
-
-        ConfigLineStart = ConfigLineEnd;
-        do {
-            ++ConfigLineStart;
-        } while (ConfigLineStart < ConfigDataEnd && *ConfigLineStart == L'\n');
+    auto parseConfigResult = parseConfig(ConfigContent);
+    if (!parseConfigResult) {
+        Print(EFI_STR("Failed to parse config (%u)\n"), parseConfigResult.error());
+        quit(1);
+        return parseConfigResult.error();
     }
+    auto &&config = parseConfigResult.value();
 
-    for (auto &value : configValues) {
+    for (auto &value : config) {
         Print(EFI_STR("Config value: [%s] = [%s]\n"), value.first.c_str(), value.second.c_str());
     }
 
