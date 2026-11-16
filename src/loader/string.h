@@ -7,7 +7,7 @@
 
 typedef uint16_t CHAR16;
 
-size_t wcstrlen(const CHAR16 *str) {
+size_t wcslen(const CHAR16 *str) {
     size_t len = 0;
     while (str[len] != 0) {
         len++;
@@ -39,7 +39,7 @@ CHAR16 *wcsstrip(CHAR16 *str) {
         str++;
     }
 
-    CHAR16 *end = str + wcstrlen(str);
+    CHAR16 *end = str + wcslen(str);
     while (end > str && (*end == L' ' || *end == L'\t' || *end == 0)) {
         *end = 0;
         end--;
@@ -63,7 +63,7 @@ class String {
     String() : buffer(new CHAR16[1]{0}) {}
 
     explicit(false) String(const CHAR16 *str) {
-        buffer.reset(new CHAR16[wcstrlen(str) + 1]);
+        buffer.reset(new CHAR16[wcslen(str) + 1]);
         wcstrcpy(buffer.get(), str);
     }
 
@@ -78,7 +78,7 @@ class String {
 
     CHAR16 *data() { return buffer.get(); }
 
-    size_t length() const { return wcstrlen(buffer.get()); }
+    size_t length() const { return wcslen(buffer.get()); }
 
     size_t find_last_of(CHAR16 ch) const {
         for (size_t i = length(); i > 0; i--) {
@@ -90,20 +90,20 @@ class String {
     }
 
     void replace(size_t pos, size_t len, const CHAR16 *str) {
-        size_t new_len = length() - len + wcstrlen(str);
-        std::unique_ptr<CHAR16[]> new_buffer(new CHAR16[new_len + 1]);
+        size_t newLength = length() - len + wcslen(str);
+        std::unique_ptr<CHAR16[]> newBuffer(new CHAR16[newLength + 1]);
         size_t i = 0;
         for (size_t j = 0; j < pos; j++) {
-            new_buffer[i++] = buffer.get()[j];
+            newBuffer[i++] = buffer.get()[j];
         }
-        for (size_t j = 0; j < wcstrlen(str); j++) {
-            new_buffer[i++] = str[j];
+        for (size_t j = 0; j < wcslen(str); j++) {
+            newBuffer[i++] = str[j];
         }
         for (size_t j = pos + len; j < length(); j++) {
-            new_buffer[i++] = buffer.get()[j];
+            newBuffer[i++] = buffer.get()[j];
         }
-        new_buffer[i] = 0;
-        buffer = std::move(new_buffer);
+        newBuffer[i] = 0;
+        buffer = std::move(newBuffer);
     }
 
   private:
