@@ -164,6 +164,21 @@ static Result<Config> parseConfig(String &configContent) {
     return config;
 }
 
+static bool validateConfig(const Config &config) {
+    // `static` is omitted here because it requires additional code not present with -nostdlib
+    const String requiredKeys[] = {(CHAR16 *)L"kernelDevice", (CHAR16 *)L"kernelPath"};
+    bool valid = true;
+
+    for (auto &requiredKey : requiredKeys) {
+        if (config.find(requiredKey).length() == 0) {
+            Print(EFI_STR("Missing required config key: %s\n"), requiredKey.c_str());
+            // Continue to print all missing keys
+            valid = false;
+        }
+    }
+    return valid;
+}
+
 [[noreturn]] static void quit(unsigned char Status) {
     qemuQuit(Status);
     for (;;) {
@@ -219,6 +234,11 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
 
     for (auto &value : config) {
         Print(EFI_STR("Config value: [%s] = [%s]\n"), value.first.c_str(), value.second.c_str());
+    }
+
+    if (!validateConfig(config)) {
+        quit(1);
+        return EFI_INVALID_PARAMETER;
     }
 
     quit(0);
