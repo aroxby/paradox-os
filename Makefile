@@ -55,8 +55,9 @@ $(EFI_FS_BOOT):
 $(EFI_FS_EXE): $(TARGET) | $(EFI_FS_BOOT)
 	cp $(<) $(@)
 
-$(EFI_FS_CONFIG): | $(EFI_FS_BOOT)
-	echo "some key=some value\nname  =  example\nstart=\n=end" > $(@)
+$(EFI_FS_CONFIG): $(OS_IMG) | $(EFI_FS_BOOT)
+	echo "kernelDevice=$(shell sfdisk --part-uuid $(OS_IMG) 1)\n" > $(@)
+	echo "kernelPath=kernel.efi\n" >> $(@)
 
 $(OS_IMG):
 	dd if=/dev/zero of=$(@).tmp bs=1M count=100
