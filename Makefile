@@ -16,11 +16,12 @@ OBJCOPY ?= objcopy
 OBJCOPY_SECTIONS = .text .sdata .data .rodata .dynamic .dynsym .rel .rela .reloc
 OBJCOPYFLAGS = $(foreach s, $(OBJCOPY_SECTIONS), -j $(s)) -O efi-app-$(ARCH)
 
-SRC_DIRS = src/loader
+SRC_DIR = src
+SRC_DIRS = $(SRC_DIR)/loader
 SRCS = $(foreach dir, $(SRC_DIRS), $(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp))
 BUILD_DIR = build
 OBJS = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SRCS)))
-OBJS := $(addprefix $(BUILD_DIR)/,$(OBJS))
+OBJS := $(OBJS:$(SRC_DIR)/%=$(BUILD_DIR)/%)
 TARGET = $(BUILD_DIR)/paradox.efi
 EFI_ELF = $(TARGET:.efi=.so)
 
@@ -34,11 +35,11 @@ OS_IMG = os.img
 .PHONY: all
 all: $(TARGET)
 
-$(BUILD_DIR)/%.o: %.c
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/%.o: %.cpp
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
