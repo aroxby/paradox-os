@@ -154,7 +154,7 @@ static Result<Config> parseConfig(String &configContent) {
         }
         *split = L'\0';
 
-        config.insert(std::move(Pair<String, String>{wcsstrip(configLineStart), wcsstrip(split + 1)}));
+        config.insert(std::move(Pair<const String, String>{wcsstrip(configLineStart), wcsstrip(split + 1)}));
 
         configLineStart = configLineEnd;
         do {
@@ -170,7 +170,8 @@ static bool validateConfig(const Config &config) {
     bool valid = true;
 
     for (auto &requiredKey : requiredKeys) {
-        if (config.find(requiredKey).length() == 0) {
+        auto it = config.find(requiredKey);
+        if (it == config.end() || it->second.length() == 0) {
             Print(EFI_STR("Missing required config key: %s\n"), requiredKey.c_str());
             // Continue to print all missing keys
             valid = false;

@@ -5,21 +5,16 @@
 #include "pair.h"
 #include "string.h"
 
-class Config : public List<Pair<String, String>> {
-  private:
-    // `static` is omitted here because it requires additional code not present with -nostdlib
-    String empty;
-
+class Config : public List<Pair<const String, String>> {
   public:
-    const String &find(const String &key) const {
-        for (auto &value : *this) {
-            if (value.first == key) {
-                return value.second;
+    Iterator find(const String &key) const {
+        Iterator it = begin();
+        for (; it != end(); ++it) {
+            if (it->first == key) {
+                break;
             }
         }
-        // Returning the empty string turned out to be pain here.
-        // TODO: We should insert it (like std::map::operator[]) or return an iterator (like std::map::find).
-        return empty;
+        return it;
     }
 };
 

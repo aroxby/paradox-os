@@ -29,6 +29,7 @@ template <typename T> class List {
         }
 
         bool operator!=(const Iterator &other) const { return current != other.current; }
+        bool operator==(const Iterator &other) const { return current == other.current; }
 
       private:
         Node *current;
