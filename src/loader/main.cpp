@@ -36,16 +36,16 @@ static Result<EFI_GUID> getPartitionUuid(EFI_HANDLE PartitionHandle) {
 }
 
 static Result<FixedArray<EFI_FILE_HANDLE>> getFileSystemHandles() {
-    EFI_STATUS Status;
-    UINTN HandleCount = 0;
-    EFI_FILE_HANDLE *HandleBuffer = NULL;
-    Status = uefi_call_wrapper((void *)gBS->LocateHandleBuffer, 5, ByProtocol, &FileSystemProtocol, NULL, &HandleCount,
-                               &HandleBuffer);
-    if (EFI_ERROR(Status)) {
-        return std::unexpected(Status);
+    EFI_STATUS status;
+    UINTN handleCount = 0;
+    EFI_FILE_HANDLE *handleBuffer = NULL;
+    status = uefi_call_wrapper((void *)gBS->LocateHandleBuffer, 5, ByProtocol, &FileSystemProtocol, NULL, &handleCount,
+                               &handleBuffer);
+    if (EFI_ERROR(status)) {
+        return std::unexpected(status);
     }
 
-    return FixedArray<EFI_FILE_HANDLE>(HandleBuffer, HandleCount);
+    return FixedArray<EFI_FILE_HANDLE>(handleBuffer, handleCount);
 }
 
 static Result<String> findCfg(EFI_HANDLE ImageHandle) {
@@ -196,26 +196,6 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
         quit(1);
         return ConfigResult.error();
     }
-    Print(EFI_STR("Found config path: %s\n"), ConfigResult.value().c_str());
-
-    auto FileSystemHandlesResult = getFileSystemHandles();
-    if (!FileSystemHandlesResult) {
-        Print(EFI_STR("Failed to get file system handles (%u)\n"), FileSystemHandlesResult.error());
-        quit(1);
-        return FileSystemHandlesResult.error();
-    }
-    auto &&FileSystemHandles = FileSystemHandlesResult.value();
-    Print(EFI_STR("Found %d file system(s).\n"), FileSystemHandles.size());
-
-    for (auto &Handle : FileSystemHandles) {
-        auto PartUuidResult = getPartitionUuid(Handle);
-        if (!PartUuidResult) {
-            continue;
-        }
-        Print(EFI_STR("Found partition UUID: %g\n"), &PartUuidResult.value());
-    }
-
-    Print(EFI_STR("Loading file: %s\n"), ConfigResult.value().c_str());
 
     auto LoadFileResult = loadFile(ImageHandle, ConfigResult.value());
     if (!LoadFileResult) {
@@ -240,6 +220,28 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
     if (!validateConfig(config)) {
         quit(1);
         return EFI_INVALID_PARAMETER;
+    }
+
+    auto fileSystemHandlesResult = getFileSystemHandles();
+    if (!fileSystemHandlesResult) {
+        Print(EFI_STR("Failed to get file system handles (%u)\n"), fileSystemHandlesResult.error());
+        quit(1);
+        return fileSystemHandlesResult.error();
+    }
+    auto &&fileSystemHandles = fileSystemHandlesResult.value();
+
+    Map<EFI_GUID, EFI_FILE_HANDLE> partitionMap;
+    for (auto &handle : fileSystemHandles) {
+        auto partUuidResult = getPartitionUuid(handle);
+        if (!partUuidResult) {
+            continue;
+        }
+        Print(EFI_STR("Found FS with partition UUID: %g\n"), &*partUuidResult);
+        partitionMap.insert(std::move(Pair<const EFI_GUID, EFI_FILE_HANDLE>{*partUuidResult, handle}));
+    }
+
+    for (auto &value : partitionMap) {
+        Print(EFI_STR("Partition UUID: %g = %p\n"), &value.first, value.second);
     }
 
     quit(0);
