@@ -164,6 +164,70 @@ static Result<Config> parseConfig(String &configContent) {
     return config;
 }
 
+static Result<UINT32> intFromHex(const CHAR16 *str, size_t length) {
+    UINT32 ret;
+    for (size_t i = 0; i < length && str[i]; i++) {
+        ret *= 16;
+        if (str[i] >= L'0' && str[i] <= L'9') {
+            ret += str[i] - L'0';
+        } else if (str[i] >= L'a' && str[i] <= L'f') {
+            ret += str[i] - L'a' + 10;
+        } else if (str[i] >= L'A' && str[i] <= L'F') {
+            ret += str[i] - L'A' + 10;
+        } else {
+            return std::unexpected(EFI_INVALID_PARAMETER);
+        }
+    }
+    return ret;
+}
+
+static Result<EFI_GUID> parseUUID(const String &uuidStr) {
+    EFI_GUID guid;
+
+    if (uuidStr.length() != 36 || uuidStr[8] != L'-' || uuidStr[13] != L'-' || uuidStr[18] != L'-' ||
+        uuidStr[23] != L'-') {
+        return std::unexpected(EFI_INVALID_PARAMETER);
+    }
+
+    auto parseResult = intFromHex(uuidStr.c_str(), 8);
+    if (!parseResult) {
+        return std::unexpected(EFI_INVALID_PARAMETER);
+    }
+    guid.Data1 = parseResult.value();
+
+    parseResult = intFromHex(uuidStr.c_str() + 9, 4);
+    if (!parseResult) {
+        return std::unexpected(EFI_INVALID_PARAMETER);
+    }
+    guid.Data2 = parseResult.value();
+
+    parseResult = intFromHex(uuidStr.c_str() + 14, 4);
+    if (!parseResult) {
+        return std::unexpected(EFI_INVALID_PARAMETER);
+    }
+    guid.Data3 = parseResult.value();
+
+    for (int i = 0; i < 2; i++) {
+        parseResult = intFromHex(uuidStr.c_str() + 19 + i * 2, 2);
+        if (!parseResult) {
+            return std::unexpected(EFI_INVALID_PARAMETER);
+        }
+        guid.Data4[i] = parseResult.value();
+    }
+
+    for (int i = 2; i < 8; i++) {
+        parseResult = intFromHex(uuidStr.c_str() + 20 + i * 2, 2);
+        if (!parseResult) {
+            return std::unexpected(EFI_INVALID_PARAMETER);
+        }
+        guid.Data4[i] = parseResult.value();
+    }
+
+    Print(EFI_STR("Parsed %s -> %g\n"), uuidStr.c_str(), &guid);
+
+    return guid;
+}
+
 static bool validateConfig(const Config &config) {
     // `static` is omitted here because it requires additional code not present with -nostdlib
     const String requiredKeys[] = {(CHAR16 *)L"kernelDevice", (CHAR16 *)L"kernelPath"};
@@ -177,6 +241,10 @@ static bool validateConfig(const Config &config) {
             valid = false;
         }
     }
+
+    // TODO: Not part of validation, need to rework these steps and structures
+    parseUUID(config.find((CHAR16 *)L"kernelDevice")->second);
+
     return valid;
 }
 

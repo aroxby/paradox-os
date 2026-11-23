@@ -74,6 +74,8 @@ class String {
 
     bool operator==(const String &other) const { return wcstrcmp(buffer.get(), other.buffer.get()) == 0; }
 
+    const CHAR16 &operator[](size_t index) const { return buffer.get()[index]; }
+
     const CHAR16 *c_str() const { return buffer.get(); }
 
     CHAR16 *data() { return buffer.get(); }
