@@ -197,6 +197,32 @@ static bool operator==(const EFI_GUID &lhs, const EFI_GUID &rhs) {
     return lhsData[0] == rhsData[0] && lhsData[1] == rhsData[1] && lhsData[2] == rhsData[2] && lhsData[3] == rhsData[3];
 }
 
+static EFI_STATUS runEfi(EFI_HANDLE *imageHandle, EFI_FILE_HANDLE fs, String &path) {
+    std::unique_ptr<EFI_DEVICE_PATH> devicePath;
+    devicePath.reset(FileDevicePath(fs, path.data()));
+    if (devicePath == NULL) {
+        return EFI_OUT_OF_RESOURCES;
+    }
+    Print(EFI_STR("Kernel device path: %s\n"), DevicePathToStr(devicePath.get()));
+
+    EFI_HANDLE secondImageHandle = NULL;
+    EFI_STATUS status =
+        uefi_call_wrapper((void *)BS->LoadImage, 6, FALSE, *imageHandle, devicePath.get(), NULL, 0, &secondImageHandle);
+
+    if (EFI_ERROR(status)) {
+        return status;
+    }
+
+    devicePath.reset();
+
+    if (!EFI_ERROR(status)) {
+        status = uefi_call_wrapper((void *)BS->StartImage, 3, secondImageHandle, NULL, NULL);
+        uefi_call_wrapper((void *)BS->UnloadImage, 1, secondImageHandle);
+    }
+
+    return status;
+}
+
 [[noreturn]] static void quit(unsigned char Status) {
     qemuQuit(Status);
     for (;;) {
@@ -267,6 +293,13 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
         Print(EFI_STR("Failed to find file system with partition UUID: %g\n"), &config.partitionUuid);
         quit(1);
         return EFI_NOT_FOUND;
+    }
+
+    auto status = runEfi(&ImageHandle, kernelFS, config.kernelPath);
+    if (EFI_ERROR(status)) {
+        Print(EFI_STR("Failed to run kernel (%u)\n"), status);
+        quit(1);
+        return status;
     }
 
     quit(0);
