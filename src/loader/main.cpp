@@ -187,8 +187,7 @@ static Result<Config> unpackConfig(const ConfigArgs &args) {
         return std::unexpected(EFI_INVALID_PARAMETER);
     }
 
-    Config config = {.kernelPath = args.find((CHAR16 *)L"kernelPath")->second.c_str(),
-                     .partitionUuid = uuidResult.value()};
+    Config config = {.kernelPath = args.find((CHAR16 *)L"kernelPath")->second, .partitionUuid = uuidResult.value()};
     return config;
 }
 
