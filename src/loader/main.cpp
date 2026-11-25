@@ -135,8 +135,8 @@ static Result<String> loadFile(EFI_HANDLE ImageHandle, const String &FilePath) {
     return String(utf8ToUtf16(reinterpret_cast<const char *>(Buffer.get())).get());
 }
 
-static Result<Config> parseConfig(String &configContent) {
-    Config config;
+static Result<ConfigArgs> parseConfig(String &configContent) {
+    ConfigArgs config;
     auto *configDataStart = configContent.data();
     auto *configDataEnd = configDataStart + configContent.length();
     auto *configLineStart = configDataStart;
@@ -223,29 +223,35 @@ static Result<EFI_GUID> parseUUID(const String &uuidStr) {
         guid.Data4[i] = parseResult.value();
     }
 
-    Print(EFI_STR("Parsed %s -> %g\n"), uuidStr.c_str(), &guid);
-
     return guid;
 }
 
-static bool validateConfig(const Config &config) {
+static Result<Config> unpackConfig(const ConfigArgs &args) {
     // `static` is omitted here because it requires additional code not present with -nostdlib
     const String requiredKeys[] = {(CHAR16 *)L"kernelDevice", (CHAR16 *)L"kernelPath"};
-    bool valid = true;
+    bool haveAllKeys = true;
 
     for (auto &requiredKey : requiredKeys) {
-        auto it = config.find(requiredKey);
-        if (it == config.end() || it->second.length() == 0) {
+        auto it = args.find(requiredKey);
+        if (it == args.end() || it->second.length() == 0) {
             Print(EFI_STR("Missing required config key: %s\n"), requiredKey.c_str());
             // Continue to print all missing keys
-            valid = false;
+            haveAllKeys = false;
         }
     }
 
-    // TODO: Not part of validation, need to rework these steps and structures
-    parseUUID(config.find((CHAR16 *)L"kernelDevice")->second);
+    if (!haveAllKeys) {
+        return std::unexpected(EFI_INVALID_PARAMETER);
+    }
 
-    return valid;
+    auto uuidResult = parseUUID(args.find((CHAR16 *)L"kernelDevice")->second);
+    if (!uuidResult) {
+        return std::unexpected(EFI_INVALID_PARAMETER);
+    }
+
+    Config config = {.kernelPath = args.find((CHAR16 *)L"kernelPath")->second.c_str(),
+                     .partitionUuid = uuidResult.value()};
+    return config;
 }
 
 [[noreturn]] static void quit(unsigned char Status) {
@@ -279,16 +285,19 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
         quit(1);
         return parseConfigResult.error();
     }
-    auto &&config = parseConfigResult.value();
+    auto &&configArgs = parseConfigResult.value();
 
-    for (auto &value : config) {
+    for (auto &value : configArgs) {
         Print(EFI_STR("Config value: [%s] = [%s]\n"), value.first.c_str(), value.second.c_str());
     }
 
-    if (!validateConfig(config)) {
+    auto unpackConfigResult = unpackConfig(configArgs);
+    if (!unpackConfigResult) {
+        Print(EFI_STR("Failed to unpack config (%u)\n"), unpackConfigResult.error());
         quit(1);
-        return EFI_INVALID_PARAMETER;
+        return unpackConfigResult.error();
     }
+    auto &&config = unpackConfigResult.value();
 
     auto fileSystemHandlesResult = getFileSystemHandles();
     if (!fileSystemHandlesResult) {
