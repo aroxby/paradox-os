@@ -5,7 +5,7 @@ CFLAGS += $(BASE_CFLAGS) -std=c17
 CXXFLAGS += $(BASE_CFLAGS) -std=c++26 -fno-exceptions -fno-unwind-tables
 EFI_INC = /usr/include/efi
 EFI_ARCH_INC = $(EFI_INC)/$(ARCH)
-INCLUDE = $(EFI_INC) $(EFI_ARCH_INC)
+INCLUDE = $(EFI_INC) $(EFI_ARCH_INC) $(SRC_DIR)/shared
 
 EFI_LIBDIR ?= /usr/lib
 EFI_CRT = $(EFI_LIBDIR)/crt0-efi-$(ARCH).o
@@ -20,15 +20,15 @@ OBJCOPYFLAGS = $(foreach s, $(OBJCOPY_SECTIONS), -j $(s)) -O efi-app-$(ARCH)
 BUILD_DIR = build
 SRC_DIR = src
 
-BOOT_SRC_DIR = $(SRC_DIR)/loader
-BOOT_SRCS = $(foreach dir, $(BOOT_SRC_DIR), $(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp))
+BOOT_SRC_DIRS = $(SRC_DIR)/shared $(SRC_DIR)/loader
+BOOT_SRCS = $(foreach dir, $(BOOT_SRC_DIRS), $(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp))
 BOOT_OBJS = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(BOOT_SRCS)))
 BOOT_OBJS := $(BOOT_OBJS:$(SRC_DIR)/%=$(BUILD_DIR)/%)
 BOOT_ELF = $(BOOT_TARGET:.efi=.so)
 BOOT_TARGET = $(BUILD_DIR)/paradox.efi
 
-KRNL_SRC_DIR = $(SRC_DIR)/kernel
-KRNL_SRCS = $(foreach dir, $(KRNL_SRC_DIR), $(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp))
+KRNL_SRC_DIRS = $(SRC_DIR)/shared $(SRC_DIR)/kernel
+KRNL_SRCS = $(foreach dir, $(KRNL_SRC_DIRS), $(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp))
 KRNL_OBJS = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(KRNL_SRCS)))
 KRNL_OBJS := $(KRNL_OBJS:$(SRC_DIR)/%=$(BUILD_DIR)/%)
 KRNL_ELF = $(KRNL_TARGET:.efi=.so)
