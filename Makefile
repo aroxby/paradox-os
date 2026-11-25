@@ -12,18 +12,27 @@ EFI_CRT = $(EFI_LIBDIR)/crt0-efi-$(ARCH).o
 EFI_LDSCRIPT = $(EFI_LIBDIR)/elf_$(ARCH)_efi.lds
 EFI_LDFLAGS = -nostdlib -znocombreloc -T $(EFI_LDSCRIPT) -shared -Bsymbolic --no-undefined
 EFI_LIBS = -lgnuefi -lefi
+
 OBJCOPY ?= objcopy
 OBJCOPY_SECTIONS = .text .sdata .data .rodata .dynamic .dynsym .rel .rela .reloc
 OBJCOPYFLAGS = $(foreach s, $(OBJCOPY_SECTIONS), -j $(s)) -O efi-app-$(ARCH)
 
-SRC_DIR = src
-SRC_DIRS = $(SRC_DIR)/loader
-SRCS = $(foreach dir, $(SRC_DIRS), $(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp))
 BUILD_DIR = build
-OBJS = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SRCS)))
-OBJS := $(OBJS:$(SRC_DIR)/%=$(BUILD_DIR)/%)
-TARGET = $(BUILD_DIR)/paradox.efi
-EFI_ELF = $(TARGET:.efi=.so)
+SRC_DIR = src
+
+BOOT_SRC_DIR = $(SRC_DIR)/loader
+BOOT_SRCS = $(foreach dir, $(BOOT_SRC_DIR), $(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp))
+BOOT_OBJS = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(BOOT_SRCS)))
+BOOT_OBJS := $(BOOT_OBJS:$(SRC_DIR)/%=$(BUILD_DIR)/%)
+BOOT_ELF = $(BOOT_TARGET:.efi=.so)
+BOOT_TARGET = $(BUILD_DIR)/paradox.efi
+
+KRNL_SRC_DIR = $(SRC_DIR)/kernel
+KRNL_SRCS = $(foreach dir, $(KRNL_SRC_DIR), $(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp))
+KRNL_OBJS = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(KRNL_SRCS)))
+KRNL_OBJS := $(KRNL_OBJS:$(SRC_DIR)/%=$(BUILD_DIR)/%)
+KRNL_ELF = $(KRNL_TARGET:.efi=.so)
+KRNL_TARGET = $(BUILD_DIR)/kernel.efi
 
 EFI_FS = efi_root
 EFI_FS_BOOT = $(EFI_FS)/EFI/BOOT
@@ -33,7 +42,7 @@ EFI_FS_CONFIG = $(EFI_FS_BOOT)/paradox.cfg
 OS_IMG = os.img
 
 .PHONY: all
-all: $(TARGET)
+all: $(BOOT_TARGET) $(KRNL_TARGET)
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
@@ -43,26 +52,29 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(EFI_ELF): $(OBJS)
-	$(LD) $(EFI_LDFLAGS) -L$(EFI_LIBDIR) $(EFI_CRT) $(OBJS) $(EFI_LIBS) -o $@
+$(BOOT_ELF): $(BOOT_OBJS)
+$(KRNL_ELF): $(KRNL_OBJS)
+$(KRNL_ELF) $(BOOT_ELF):
+	$(LD) $(EFI_LDFLAGS) -L$(EFI_LIBDIR) $(EFI_CRT) $(^) $(EFI_LIBS) -o $(@)
 
-$(TARGET): $(EFI_ELF)
-	$(OBJCOPY) $(OBJCOPYFLAGS) $< $@
+%.efi: %.so
+	$(OBJCOPY) $(OBJCOPYFLAGS) $(<) $(@)
 
 $(EFI_FS_BOOT):
 	mkdir -p $(@)
 
-$(EFI_FS_EXE): $(TARGET) | $(EFI_FS_BOOT)
+$(EFI_FS_EXE): $(BOOT_TARGET) | $(EFI_FS_BOOT)
 	cp $(<) $(@)
 
 $(EFI_FS_CONFIG): $(OS_IMG) | $(EFI_FS_BOOT)
 	echo "kernelDevice=$(shell sfdisk --part-uuid $(OS_IMG) 1)\n" > $(@)
 	echo "kernelPath=kernel.efi\n" >> $(@)
 
-$(OS_IMG):
+$(OS_IMG): $(KRNL_TARGET)
 	dd if=/dev/zero of=$(@).tmp bs=1M count=100
 	echo "label: gpt\nstart=8M,type=\"Microsoft basic data\"" | sfdisk $(@).tmp
 	mformat -Fi $(@).tmp@@8M
+	mcopy -i $(@).tmp@@8M $(<) ::kernel.efi
 	mv $(@).tmp $(@)
 
 .PHONY: test
