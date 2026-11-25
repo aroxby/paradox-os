@@ -254,6 +254,12 @@ static Result<Config> unpackConfig(const ConfigArgs &args) {
     return config;
 }
 
+static bool operator==(const EFI_GUID &lhs, const EFI_GUID &rhs) {
+    const UINT32 *lhsData = reinterpret_cast<const UINT32 *>(&lhs);
+    const UINT32 *rhsData = reinterpret_cast<const UINT32 *>(&rhs);
+    return lhsData[0] == rhsData[0] && lhsData[1] == rhsData[1] && lhsData[2] == rhsData[2] && lhsData[3] == rhsData[3];
+}
+
 [[noreturn]] static void quit(unsigned char Status) {
     qemuQuit(Status);
     for (;;) {
@@ -307,18 +313,23 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
     }
     auto &&fileSystemHandles = fileSystemHandlesResult.value();
 
-    Map<EFI_GUID, EFI_FILE_HANDLE> partitionMap;
+    EFI_FILE_HANDLE kernelFS = nullptr;
     for (auto &handle : fileSystemHandles) {
         auto partUuidResult = getPartitionUuid(handle);
         if (!partUuidResult) {
             continue;
         }
         Print(EFI_STR("Found FS with partition UUID: %g\n"), &*partUuidResult);
-        partitionMap.insert(std::move(Pair<const EFI_GUID, EFI_FILE_HANDLE>{*partUuidResult, handle}));
+        if (*partUuidResult == config.partitionUuid) {
+            kernelFS = handle;
+            // break;
+        }
     }
 
-    for (auto &value : partitionMap) {
-        Print(EFI_STR("Partition UUID: %g = %p\n"), &value.first, value.second);
+    if (kernelFS == nullptr) {
+        Print(EFI_STR("Failed to find file system with partition UUID: %g\n"), &config.partitionUuid);
+        quit(1);
+        return EFI_NOT_FOUND;
     }
 
     quit(0);
