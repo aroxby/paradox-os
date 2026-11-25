@@ -299,9 +299,9 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
     if (EFI_ERROR(status)) {
         Print(EFI_STR("Failed to run kernel (%u)\n"), status);
         quit(1);
-        return status;
+    } else {
+        quit(0);
     }
 
-    quit(0);
-    return EFI_SUCCESS;
+    return status;
 }
