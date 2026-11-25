@@ -285,7 +285,7 @@ extern "C" EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *
         Print(EFI_STR("Found FS with partition UUID: %g\n"), &*partUuidResult);
         if (*partUuidResult == config.partitionUuid) {
             kernelFS = handle;
-            // break;
+            // break;  // Show all recognized file systems (mostly for fun)
         }
     }
 
